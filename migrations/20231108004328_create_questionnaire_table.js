@@ -2,7 +2,7 @@ exports.up = function (knex) {
     return knex.schema
         .createTable('questionnaire', (table) => {
             table.uuid('questionnaire_id').primary();
-            table.uuid('user_id').reference('users.user_id').onUpdate('CASCADE').onDelete('CASCADE').notNullable();
+            table.uuid('user_id').references('users.user_id').onUpdate('CASCADE').onDelete('CASCADE').notNullable();
             table.string('traveler_type');
             table.string('food_type');
             table.string('food_rate');
@@ -15,5 +15,5 @@ exports.up = function (knex) {
 }
 
 exports.down = function (knex) {
-    return knex.schema.dropTable('users');
+    return knex.schema.dropTable('questionnaire');
 }
