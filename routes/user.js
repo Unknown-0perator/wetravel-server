@@ -2,6 +2,7 @@ const knex = require('knex')(require('../knexfile'));
 const express = require('express');
 const router = express.Router();
 const { v4: uuid } = require('uuid')
+const { hashPassword } = require('../utils/encrypt_decrypt-password');
 
 
 router.post('/sign-up', (req, res) => {
@@ -12,7 +13,7 @@ router.post('/sign-up', (req, res) => {
                 user_id: uuid(),
                 user_name: req.body.user_name,
                 email: req.body.email,
-                password: req.body.password,
+                password: hashPassword(req.body.password),
             }
             const newQuestionnaire = {
                 questionnaire_id: uuid(),

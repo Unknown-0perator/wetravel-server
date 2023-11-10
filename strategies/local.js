@@ -1,6 +1,7 @@
 const passport = require('passport');
 const { Strategy } = require('passport-local');
 const knex = require('knex')(require('../knexfile'));
+const { comparePassword } = require('../utils/encrypt_decrypt-password');
 
 passport.serializeUser((user, done) => done(null, user.user_id));
 
@@ -26,7 +27,7 @@ passport.use(
                 .then(response => {
                     const user = response[0];
                     if (!user) throw new Error('User not found');
-                    if (password === user.password) {
+                    if (comparePassword(password, user.password)) {
                         done(null, user);
                     } else {
                         done(null, false, { message: 'Incorrect password' });
