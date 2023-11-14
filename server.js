@@ -40,6 +40,9 @@ app.use((req, res, next) => {
 });
 
 // Routes
+app.get('/', (req, res) => {
+    res.status(200).json({ message: "Welcome to WeTravel Server!" });
+});
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 
