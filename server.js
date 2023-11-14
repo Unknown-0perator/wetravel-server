@@ -1,7 +1,7 @@
 const express = require('express');
+const cookieParser = require('cookie-parser')
 const session = require('express-session');
 const passport = require('passport');
-const memoryStore = new session.MemoryStore();
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const cors = require('cors');
@@ -13,18 +13,28 @@ const { PORT } = process.env;
 const { CORS_ORIGIN } = process.env;
 app.use(cors({ origin: CORS_ORIGIN }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+app.use(cookieParser())
 app.use(session({
-    secret: 'asddadAADSDFADSAFDSASF',
+    secret: 'your-secret-key',
     resave: false,
     saveUninitialized: false,
-    store: memoryStore,
+    store: new session.MemoryStore({
+        checkPeriod: 86400000,
+    }),
+    cookie: {
+        maxAge: 24 * 60 * 60 * 1000,
+        secure: false,
+        httpOnly: true,
+    },
 }));
+
+
 
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Custom middleware, if needed, can be added here
 app.use((req, res, next) => {
     next();
 });
