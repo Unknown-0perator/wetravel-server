@@ -4,6 +4,7 @@ const session = require('express-session');
 const passport = require('passport');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
+const planRoutes = require('./routes/plan');
 const cors = require('cors');
 
 require('dotenv').config();
@@ -40,6 +41,7 @@ app.get('/', (req, res) => {
 });
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
+app.use('/plan', planRoutes)
 
 app.listen(PORT, () => {
     console.log(`Listening on port ${PORT}`);

@@ -3,12 +3,14 @@ const express = require('express')
 const router = express.Router();
 const { v4: uuid } = require('uuid')
 
+
 const isAuthenticated = (req, res, next) => {
     if (req.isAuthenticated()) {
         return next();
     }
     res.status(401).send('Unauthorized');
 };
+
 
 router.post('/new-plan', isAuthenticated, async (req, res) => {
     try {
@@ -24,10 +26,22 @@ router.post('/new-plan', isAuthenticated, async (req, res) => {
             end_date,
             country
         };
-        await knex('plan').insert(newPlan);
+        await knex('plans').insert(newPlan);
         res.status(201).send('Created');
     } catch (error) {
         console.error('Error creating new plan:', error);
         res.status(500).send('Internal Server Error');
     }
 });
+
+router.get('/', (req, res) => {
+    knex('plans').where({ user_id: req.user.user_id })
+        .then((plans) => {
+            res.status(200).json(plans || [])
+        })
+        .catch((err) => {
+            res.status(500).json({ error: 'Internal Server Error' })
+        });
+});
+
+module.exports = router;
