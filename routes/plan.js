@@ -1,7 +1,8 @@
 const knex = require('knex')(require('../knexfile'));
 const express = require('express')
 const router = express.Router();
-const { v4: uuid } = require('uuid')
+const { v4: uuid } = require('uuid');
+const { route } = require('./auth');
 
 
 const isAuthenticated = (req, res, next) => {
@@ -61,6 +62,14 @@ router.get('/:plan_id', isAuthenticated, (req, res) => {
             res.status(500).json({ error: 'Internal Server Error' });
         });
 });
+
+router.post('/:plan_id', isAuthenticated, (req, res) => {
+
+})
+
+router.delete('/:plan_id/activity/:activity_id')
+
+router.delete('/:plan_id')
 
 
 module.exports = router;
