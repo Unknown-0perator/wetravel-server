@@ -23,7 +23,6 @@ router.post('/login', (req, res, next) => {
 
 router.get('/user', (req, res) => {
     res.send(req.user)
-
 })
 
 router.post('/logout', (req, res) => {
