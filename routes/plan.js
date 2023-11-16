@@ -34,7 +34,7 @@ router.post('/new-plan', isAuthenticated, async (req, res) => {
     }
 });
 
-router.get('/', (req, res) => {
+router.get('/', isAuthenticated, (req, res) => {
     knex('plans').where({ user_id: req.user.user_id })
         .then((plans) => {
             res.status(200).json(plans || [])
@@ -43,5 +43,24 @@ router.get('/', (req, res) => {
             res.status(500).json({ error: 'Internal Server Error' })
         });
 });
+
+router.get('/:plan_id', isAuthenticated, (req, res) => {
+    knex('plans')
+        .join('plan_details', 'plan_details.plan_id', 'plans.plan_id')
+        .where({ 'plans.plan_id': req.params.plan_id })
+        .select('plan_details.plan_id', 'activity_id', 'date', 'time', 'activity')
+        .then((planDetails) => {
+            if (planDetails.length === 0) {
+                res.status(404).json({ error: `Plan with ID ${req.params.plan_id} doesn't exist` });
+            } else {
+                res.status(200).json(planDetails);
+            }
+        })
+        .catch((err) => {
+            console.error('Error retrieving plan details:', err);
+            res.status(500).json({ error: 'Internal Server Error' });
+        });
+});
+
 
 module.exports = router;
