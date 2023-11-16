@@ -16,17 +16,22 @@ router.post('/login', (req, res, next) => {
             if (err) {
                 return res.status(500).json({ message: "Error logging in" });
             }
-            return res.status(200).json({ message: "Logged in successfully", user });
+            return res.status(200).json({ message: "Logged in successfully" });
         });
     })(req, res, next);
 });
+
+router.get('/user', (req, res) => {
+    res.send(req.user)
+
+})
 
 router.post('/logout', (req, res) => {
     req.logout((err) => {
         if (err) {
             return res.status(500).json({ message: `Failed to logout due to: ${err}` });
         }
-  
+
         req.session.destroy((err) => {
             if (err) {
                 return res.status(500).json({ message: 'Failed to logout due to server error' });
