@@ -49,7 +49,7 @@ router.get('/:plan_id', isAuthenticated, (req, res) => {
     knex('plans')
         .join('plan_details', 'plan_details.plan_id', 'plans.plan_id')
         .where({ 'plans.plan_id': req.params.plan_id })
-        .select('plan_details.plan_id', 'activity_id', 'date', 'time', 'activity')
+        .select('plan_details.plan_id', 'event_id', 'date', 'time', 'activity')
         .then((planDetails) => {
             if (planDetails.length === 0) {
                 res.status(404).json({ error: `Plan with ID ${req.params.plan_id} doesn't exist` });
@@ -67,7 +67,7 @@ router.post('/:plan_id', isAuthenticated, (req, res) => {
 
 })
 
-router.delete('/:plan_id/activity/:activity_id')
+router.delete('/:plan_id/event/:event_id')
 
 router.delete('/:plan_id')
 
