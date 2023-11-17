@@ -2,7 +2,7 @@ const knex = require('knex')(require('../knexfile'));
 const express = require('express')
 const router = express.Router();
 const { v4: uuid } = require('uuid');
-const { route } = require('./auth');
+
 
 
 const isAuthenticated = (req, res, next) => {
@@ -28,10 +28,10 @@ router.post('/new-plan', isAuthenticated, async (req, res) => {
             country
         };
         await knex('plans').insert(newPlan);
-        res.status(201).send('Created');
+        res.status(201).json({ message: 'Created' });
     } catch (error) {
         console.error('Error creating new plan:', error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -63,8 +63,24 @@ router.get('/:plan_id', isAuthenticated, (req, res) => {
         });
 });
 
-router.post('/:plan_id', isAuthenticated, (req, res) => {
-
+router.post('/:plan_id/event', isAuthenticated, (req, res) => {
+    const { date, time, event } = req.body;
+    if (!date || !time || !event) {
+        return res.status(400).send('Bad Request: Missing required fields (date, time, event).');
+    }
+    const newEvent = {
+        plan_id: req.params.plan_id,
+        user_id: req.user.user_id,
+        date,
+        time,
+        event
+    }
+    knex('plan_details').insert(newEvent).then(() => {
+        res.status(201).json({ message: 'Created' })
+    }).catch((error) => {
+        console.error('Error creating new event:', error)
+        res.status(500).json({ error: 'Internal Server Error' })
+    })
 })
 
 router.delete('/:plan_id/event/:event_id')
