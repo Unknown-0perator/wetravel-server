@@ -13,26 +13,27 @@ const isAuthenticated = (req, res, next) => {
 };
 
 
-router.post('/new-plan', isAuthenticated, async (req, res) => {
-    try {
-        const { user_id, city, start_date, end_date, country } = req.body;
-        if (!city || !start_date || !end_date) {
-            return res.status(400).send('Bad Request: Missing required fields.');
-        }
-        const newPlan = {
-            plan_id: uuid(),
-            user_id,
-            city,
-            start_date,
-            end_date,
-            country
-        };
-        await knex('plans').insert(newPlan);
-        res.status(201).json({ message: 'Created' });
-    } catch (error) {
-        console.error('Error creating new plan:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+router.post('/new-plan', isAuthenticated, (req, res) => {
+    const { user_id, city, start_date, end_date, country } = req.body;
+    if (!city || !start_date || !end_date) {
+        return res.status(400).send('Bad Request: Missing required fields.');
     }
+    const newPlan = {
+        plan_id: uuid(),
+        user_id,
+        city,
+        start_date,
+        end_date,
+        country
+    };
+    knex('plans').insert(newPlan)
+        .then(() => {
+            res.status(201).json({ message: 'Created' });
+        })
+        .catch(error => {
+            console.error('Error creating new plan:', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        });
 });
 
 router.get('/', isAuthenticated, (req, res) => {
@@ -83,8 +84,9 @@ router.post('/:plan_id/event', isAuthenticated, (req, res) => {
     })
 })
 
-router.delete('/:plan_id/event/:event_id', (req, res) => {
-    knex('plan_details').where({ plan_id: req.params.plan_id }).andWhere({ event_id: req.params.event_id }).del().then(() => {
+router.delete('/:plan_id/event/:event_id', isAuthenticated, (req, res) => {
+    const { plan_id, event_id } = req.params
+    knex('plan_details').where({ plan_id: plan_id }).andWhere({ event_id: event_id }).del().then(() => {
         res.status(204).json({})
     }).catch(error => {
         console.error('Error deleting event:', error);
@@ -92,7 +94,14 @@ router.delete('/:plan_id/event/:event_id', (req, res) => {
     })
 })
 
-router.delete('/:plan_id')
+router.delete('/:plan_id', isAuthenticated, (req, res) => {
+    knex('plans').where({ plan_id: req.params.plan_id }).del().then(() => {
+        res.status(204).json({})
+    }).catch(error => {
+        console.error('Error deleting plan:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    })
+})
 
 
 module.exports = router;
