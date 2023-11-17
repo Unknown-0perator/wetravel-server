@@ -83,7 +83,14 @@ router.post('/:plan_id/event', isAuthenticated, (req, res) => {
     })
 })
 
-router.delete('/:plan_id/event/:event_id')
+router.delete('/:plan_id/event/:event_id', (req, res) => {
+    knex('plan_details').where({ plan_id: req.params.plan_id }).andWhere({ event_id: req.params.event_id }).del().then(() => {
+        res.status(204).json({})
+    }).catch(error => {
+        console.error('Error deleting event:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    })
+})
 
 router.delete('/:plan_id')
 
