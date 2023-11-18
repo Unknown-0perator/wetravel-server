@@ -12,19 +12,21 @@ const isAuthenticated = (req, res, next) => {
     res.status(401).send('Unauthorized');
 };
 
-
+// all the post route should be in one API call
+// Put request for editing events
 router.post('/new-plan', isAuthenticated, (req, res) => {
     const { user_id, city, start_date, end_date, country } = req.body;
     if (!city || !start_date || !end_date) {
         return res.status(400).send('Bad Request: Missing required fields.');
     }
+    // city change to location and no need for country
     const newPlan = {
         plan_id: uuid(),
         user_id,
         city,
         start_date,
         end_date,
-        country
+        country 
     };
     knex('plans').insert(newPlan)
         .then(() => {
@@ -102,6 +104,7 @@ router.delete('/:plan_id', isAuthenticated, (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     })
 })
+
 
 
 module.exports = router;
