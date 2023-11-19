@@ -43,10 +43,14 @@ router.post('/', isAuthenticated, (req, res) => {
                         event_type: event.event_type,
                         event_description: event.event_description,
                     }
-                    knex('trip_details').insert(newEvent)
-                }).catch(error => {
-                    console.error('Error creating new event:', error);
-                    res.status(500).json({ error: 'Internal Server Error' });
+                    knex('trip_details').insert(newEvent).then(() => {
+                        res.status(201).json({
+                            message: 'Created',
+                        });
+                    }).catch(error => {
+                        console.error('Error creating new event:', error);
+                        res.status(500).json({ error: 'Internal Server Error' });
+                    })
                 })
             }
         })
@@ -66,16 +70,56 @@ router.get('/', isAuthenticated, (req, res) => {
         });
 });
 
-router.get('/:plan_id', isAuthenticated, (req, res) => {
-    knex('plans')
-        .join('plan_details', 'plan_details.plan_id', 'plans.plan_id')
-        .where({ 'plans.plan_id': req.params.plan_id })
-        .select('plan_details.plan_id', 'event_id', 'date', 'time', 'activity')
+router.get('/:trip_id', isAuthenticated, (req, res) => {
+    knex('trips')
+        .join('trip_details', 'trip_details.trip_id', 'trips.trip_id')
+        .where({ 'trip_details.trip_id': req.params.trip_id })
+        .select(
+            'trips.trip_id',
+            'user_id',
+            'destination',
+            'start_date',
+            'end_date',
+            'event_id',
+            'date',
+            'trip_details.event_type',
+            'event_description',
+            'event_time',
+        )
+        .orderBy('date', 'asc')
         .then((planDetails) => {
             if (planDetails.length === 0) {
-                res.status(404).json({ error: `Plan with ID ${req.params.plan_id} doesn't exist` });
+                res.status(404).json({ error: `Plan with ID ${req.params.trip_id} doesn't exist` });
             } else {
-                res.status(200).json(planDetails);
+                const tripDetails = {
+                    trip_id: planDetails[0].trip_id,
+                    user_id: planDetails[0].user_id,
+                    destination: planDetails[0].destination,
+                    start_date: planDetails[0].start_date,
+                    end_date: planDetails[0].end_date,
+                    days: [],
+                };
+
+                let currentDay = null;
+
+                planDetails.forEach((detail) => {
+                    if (currentDay !== detail.date) {
+                        currentDay = detail.date;
+                        tripDetails.days.push({
+                            date: detail.date,
+                            events: [],
+                        });
+                    }
+
+                    tripDetails.days[tripDetails.days.length - 1].events.push({
+                        event_id: detail.event_id,
+                        event_type: detail.event_type,
+                        event_description: detail.event_description,
+                        event_time: detail.event_time,
+                    });
+                });
+
+                res.status(200).json(tripDetails);
             }
         })
         .catch((err) => {
@@ -84,25 +128,7 @@ router.get('/:plan_id', isAuthenticated, (req, res) => {
         });
 });
 
-router.post('/:plan_id/event', isAuthenticated, (req, res) => {
-    const { date, time, event } = req.body;
-    if (!date || !time || !event) {
-        return res.status(400).send('Bad Request: Missing required fields (date, time, event).');
-    }
-    const newEvent = {
-        plan_id: req.params.plan_id,
-        user_id: req.user.user_id,
-        date,
-        time,
-        event
-    }
-    knex('plan_details').insert(newEvent).then(() => {
-        res.status(201).json({ message: 'Created' })
-    }).catch((error) => {
-        console.error('Error creating new event:', error)
-        res.status(500).json({ error: 'Internal Server Error' })
-    })
-})
+
 
 router.delete('/:plan_id/event/:event_id', isAuthenticated, (req, res) => {
     const { plan_id, event_id } = req.params
