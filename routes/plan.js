@@ -12,96 +12,170 @@ const isAuthenticated = (req, res, next) => {
     res.status(401).send('Unauthorized');
 };
 
+router.post('/', isAuthenticated, async (req, res) => {
+    try {
+        const { destination, start_date, end_date, events } = req.body;
 
-router.post('/new-plan', isAuthenticated, (req, res) => {
-    const { user_id, city, start_date, end_date, country } = req.body;
-    if (!city || !start_date || !end_date) {
-        return res.status(400).send('Bad Request: Missing required fields.');
+        if (!destination || !start_date || !end_date) {
+            return res.status(400).send('Bad Request: Missing required fields.');
+        }
+
+        const newTrip = {
+            trip_id: uuid(),
+            user_id: req.user.user_id,
+            destination,
+            start_date,
+            end_date,
+        };
+
+        await knex('trips').insert(newTrip);
+
+        if (events && events.length !== 0) {
+            const eventInserts = events.map(event => ({
+                trip_id: newTrip.trip_id,
+                event_id: uuid(),
+                date: event.date,
+                event_time: event.event_time,
+                event_type: event.event_type,
+                event_description: event.event_description,
+            }));
+
+            await knex('trip_details').insert(eventInserts);
+        }
+
+        res.status(201).json({
+            message: 'Created',
+        });
+    } catch (error) {
+        console.error('Error creating new plan:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
-    const newPlan = {
-        plan_id: uuid(),
-        user_id,
-        city,
-        start_date,
-        end_date,
-        country
-    };
-    knex('plans').insert(newPlan)
-        .then(() => {
-            res.status(201).json({ message: 'Created' });
-        })
-        .catch(error => {
-            console.error('Error creating new plan:', error);
-            res.status(500).json({ error: 'Internal Server Error' });
-        });
 });
 
-router.get('/', isAuthenticated, (req, res) => {
-    knex('plans').where({ user_id: req.user.user_id })
-        .then((plans) => {
-            res.status(200).json(plans || [])
-        })
-        .catch((err) => {
-            res.status(500).json({ error: 'Internal Server Error' })
-        });
-});
+router.put('/:trip_id', isAuthenticated, async (req, res) => {
+    try {
+        const { destination, start_date, end_date, events } = req.body;
+        const tripId = req.params.trip_id;
 
-router.get('/:plan_id', isAuthenticated, (req, res) => {
-    knex('plans')
-        .join('plan_details', 'plan_details.plan_id', 'plans.plan_id')
-        .where({ 'plans.plan_id': req.params.plan_id })
-        .select('plan_details.plan_id', 'event_id', 'date', 'time', 'activity')
-        .then((planDetails) => {
-            if (planDetails.length === 0) {
-                res.status(404).json({ error: `Plan with ID ${req.params.plan_id} doesn't exist` });
-            } else {
-                res.status(200).json(planDetails);
+        const updatedTrip = {
+            destination,
+            start_date,
+            end_date,
+        };
+
+        await knex.transaction(async (trx) => {
+
+            await trx('trips').where({ trip_id: tripId }).update(updatedTrip);
+
+            await trx('trip_details').where({ trip_id: tripId }).del();
+
+            if (events && events.length !== 0) {
+                const eventInserts = events.map(event => ({
+                    trip_id: tripId,
+                    event_id: uuid(),
+                    date: event.date,
+                    event_time: event.event_time,
+                    event_type: event.event_type,
+                    event_description: event.event_description,
+                }));
+                await trx('trip_details').insert(eventInserts);
             }
-        })
-        .catch((err) => {
-            console.error('Error retrieving plan details:', err);
-            res.status(500).json({ error: 'Internal Server Error' });
         });
+        res.status(200).json({
+            message: 'Updated',
+        });
+    } catch (error) {
+        console.error('Error updating trip:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
 });
 
-router.post('/:plan_id/event', isAuthenticated, (req, res) => {
-    const { date, time, event } = req.body;
-    if (!date || !time || !event) {
-        return res.status(400).send('Bad Request: Missing required fields (date, time, event).');
+router.get('/', isAuthenticated, async (req, res) => {
+    try {
+        const plans = await knex('trips').where({ user_id: req.user.user_id });
+        res.status(200).json(plans);
+    } catch (error) {
+        console.error('Error retrieving trips:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
-    const newEvent = {
-        plan_id: req.params.plan_id,
-        user_id: req.user.user_id,
-        date,
-        time,
-        event
-    }
-    knex('plan_details').insert(newEvent).then(() => {
-        res.status(201).json({ message: 'Created' })
-    }).catch((error) => {
-        console.error('Error creating new event:', error)
-        res.status(500).json({ error: 'Internal Server Error' })
-    })
-})
+});
 
-router.delete('/:plan_id/event/:event_id', isAuthenticated, (req, res) => {
-    const { plan_id, event_id } = req.params
-    knex('plan_details').where({ plan_id: plan_id }).andWhere({ event_id: event_id }).del().then(() => {
-        res.status(204).json({})
-    }).catch(error => {
+
+router.get('/:trip_id', isAuthenticated, async (req, res) => {
+    try {
+        const { trip_id } = req.params
+        const tripDetailsDB = await knex('trip_details')
+            .where({ trip_id: trip_id })
+            .orderBy('date', 'asc');
+
+        const tripsDB = await knex('trips').where({ trip_id: trip_id })
+
+        if (tripsDB.length === 0) {
+            res.status(404).json({ error: `Plan with ID ${req.params.trip_id} doesn't exist` });
+        } else {
+            const tripDetails = {
+                trip_id: tripsDB[0].trip_id,
+                user_id: tripsDB[0].user_id,
+                destination: tripsDB[0].destination,
+                start_date: tripsDB[0].start_date,
+                end_date: tripsDB[0].end_date,
+                days: [],
+            };
+            if (tripDetailsDB.length !== 0) {
+
+
+                let currentDay = null;
+
+                tripDetailsDB.forEach((detail) => {
+                    if (currentDay !== detail.date) {
+                        currentDay = detail.date;
+                        tripDetails.days.push({
+                            date: detail.date,
+                            events: [],
+                        });
+                    }
+
+                    tripDetails.days[tripDetails.days.length - 1].events.push({
+                        event_id: detail.event_id,
+                        event_type: detail.event_type,
+                        event_description: detail.event_description,
+                        event_time: detail.event_time,
+                    });
+                });
+            }
+            res.status(200).json(tripDetails);
+        }
+    } catch (error) {
+        console.error('Error retrieving plan details:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+
+router.delete('/:trip_id/event/:event_id', isAuthenticated, async (req, res) => {
+    try {
+        const { trip_id, event_id } = req.params;
+        await knex('trip_details')
+            .where({ trip_id, event_id })
+            .del();
+        res.status(204).json({});
+    } catch (error) {
         console.error('Error deleting event:', error);
         res.status(500).json({ error: 'Internal Server Error' });
-    })
-})
+    }
+});
 
-router.delete('/:plan_id', isAuthenticated, (req, res) => {
-    knex('plans').where({ plan_id: req.params.plan_id }).del().then(() => {
-        res.status(204).json({})
-    }).catch(error => {
-        console.error('Error deleting plan:', error);
+router.delete('/:trip_id', isAuthenticated, async (req, res) => {
+    try {
+        const { trip_id } = req.params;
+        await knex('trip_details').where({ trip_id }).del();
+        await knex('trips').where({ trip_id }).del();
+        res.status(204).json({});
+    } catch (error) {
+        console.error('Error Deleting Trip:', error);
         res.status(500).json({ error: 'Internal Server Error' });
-    })
-})
+    }
+});
 
 
 module.exports = router;

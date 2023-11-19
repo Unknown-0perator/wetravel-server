@@ -33,7 +33,7 @@ router.post('/sign-up', (req, res) => {
                 }).catch((err) => {
                     res.status(err)
                 })
-                return res.status(201).json(newUser)
+                return res.status(201).json(newUser[0])
             }).catch((err) => {
                 res.status(400).json(`Invalid: ${err}`)
             })
