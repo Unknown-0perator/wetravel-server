@@ -14,23 +14,41 @@ const isAuthenticated = (req, res, next) => {
 
 // all the post route should be in one API call
 // Put request for editing events
-router.post('/new-plan', isAuthenticated, (req, res) => {
-    const { user_id, city, start_date, end_date, country } = req.body;
-    if (!city || !start_date || !end_date) {
+router.post('/', isAuthenticated, (req, res) => {
+    const { destination, start_date, end_date, events } = req.body;
+    if (!destination || !start_date || !end_date) {
         return res.status(400).send('Bad Request: Missing required fields.');
     }
-    // city change to location and no need for country
-    const newPlan = {
-        plan_id: uuid(),
-        user_id,
-        city,
+    const newTrip = {
+        trip_id: uuid(),
+        user_id: req.user.user_id,
+        destination,
         start_date,
         end_date,
-        country 
     };
-    knex('plans').insert(newPlan)
+    knex('trips').insert(newTrip)
         .then(() => {
-            res.status(201).json({ message: 'Created' });
+            res.status(201).json({
+                message: 'Created',
+            });
+
+        }).then(() => {
+            if (events.length !== 0) {
+                events.map(event => {
+                    const newEvent = {
+                        trip_id: newTrip.trip_id,
+                        event_id: uuid(),
+                        date: event.date,
+                        event_time: event.event_time,
+                        event_type: event.event_type,
+                        event_description: event.event_description,
+                    }
+                    knex('trip_details').insert(newEvent)
+                }).catch(error => {
+                    console.error('Error creating new event:', error);
+                    res.status(500).json({ error: 'Internal Server Error' });
+                })
+            }
         })
         .catch(error => {
             console.error('Error creating new plan:', error);
@@ -39,9 +57,9 @@ router.post('/new-plan', isAuthenticated, (req, res) => {
 });
 
 router.get('/', isAuthenticated, (req, res) => {
-    knex('plans').where({ user_id: req.user.user_id })
+    knex('trips').where({ user_id: req.user.user_id })
         .then((plans) => {
-            res.status(200).json(plans || [])
+            res.status(200).json(plans)
         })
         .catch((err) => {
             res.status(500).json({ error: 'Internal Server Error' })
