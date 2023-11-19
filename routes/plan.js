@@ -60,6 +60,48 @@ router.post('/', isAuthenticated, (req, res) => {
         });
 });
 
+
+router.put('/:trip_id', isAuthenticated, (req, res) => {
+    const { destination, start_date, end_date, events } = req.body;
+    const updatedTrip = {
+        destination,
+        start_date,
+        end_date,
+    };
+    knex('trips').where({ trip_id: req.params.trip_id }).update(updatedTrip)
+        .then(() => {
+            res.status(201).json({
+                message: 'Updated',
+            });
+
+        }).then(() => {
+            if (events.length !== 0) {
+                events.map(event => {
+                    const newEvent = {
+                        trip_id: newTrip.trip_id,
+                        event_id: uuid(),
+                        date: event.date,
+                        event_time: event.event_time,
+                        event_type: event.event_type,
+                        event_description: event.event_description,
+                    }
+                    knex('trip_details').insert(newEvent).then(() => {
+                        res.status(201).json({
+                            message: 'Updated',
+                        });
+                    }).catch(error => {
+                        console.error('Error updating new event:', error);
+                        res.status(500).json({ error: 'Internal Server Error' });
+                    })
+                })
+            }
+        })
+        .catch(error => {
+            console.error('Error updating new trip:', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        });
+});
+
 router.get('/', isAuthenticated, (req, res) => {
     knex('trips').where({ user_id: req.user.user_id })
         .then((plans) => {
