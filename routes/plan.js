@@ -103,54 +103,46 @@ router.get('/', isAuthenticated, async (req, res) => {
 
 router.get('/:trip_id', isAuthenticated, async (req, res) => {
     try {
-        const tripDetailsDB = await knex('trips')
-            .join('trip_details', 'trip_details.trip_id', 'trips.trip_id')
-            .where({ 'trip_details.trip_id': req.params.trip_id })
-            .select(
-                'trips.trip_id',
-                'user_id',
-                'destination',
-                'start_date',
-                'end_date',
-                'event_id',
-                'date',
-                'trip_details.event_type',
-                'event_description',
-                'event_time',
-            )
+        const { trip_id } = req.params
+        const tripDetailsDB = await knex('trip_details')
+            .where({ trip_id: trip_id })
             .orderBy('date', 'asc');
 
-        if (tripDetailsDB.length === 0) {
+        const tripsDB = await knex('trips').where({ trip_id: trip_id })
+
+        if (tripsDB.length === 0) {
             res.status(404).json({ error: `Plan with ID ${req.params.trip_id} doesn't exist` });
         } else {
             const tripDetails = {
-                trip_id: tripDetailsDB[0].trip_id,
-                user_id: tripDetailsDB[0].user_id,
-                destination: tripDetailsDB[0].destination,
-                start_date: tripDetailsDB[0].start_date,
-                end_date: tripDetailsDB[0].end_date,
+                trip_id: tripsDB[0].trip_id,
+                user_id: tripsDB[0].user_id,
+                destination: tripsDB[0].destination,
+                start_date: tripsDB[0].start_date,
+                end_date: tripsDB[0].end_date,
                 days: [],
             };
+            if (tripDetailsDB.length !== 0) {
 
-            let currentDay = null;
 
-            tripDetailsDB.forEach((detail) => {
-                if (currentDay !== detail.date) {
-                    currentDay = detail.date;
-                    tripDetails.days.push({
-                        date: detail.date,
-                        events: [],
+                let currentDay = null;
+
+                tripDetailsDB.forEach((detail) => {
+                    if (currentDay !== detail.date) {
+                        currentDay = detail.date;
+                        tripDetails.days.push({
+                            date: detail.date,
+                            events: [],
+                        });
+                    }
+
+                    tripDetails.days[tripDetails.days.length - 1].events.push({
+                        event_id: detail.event_id,
+                        event_type: detail.event_type,
+                        event_description: detail.event_description,
+                        event_time: detail.event_time,
                     });
-                }
-
-                tripDetails.days[tripDetails.days.length - 1].events.push({
-                    event_id: detail.event_id,
-                    event_type: detail.event_type,
-                    event_description: detail.event_description,
-                    event_time: detail.event_time,
                 });
-            });
-
+            }
             res.status(200).json(tripDetails);
         }
     } catch (error) {
