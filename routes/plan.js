@@ -4,10 +4,11 @@ const router = express.Router();
 const { v4: uuid } = require('uuid');
 
 router.post('/', async (req, res) => {
-    try {
-        const { destination, start_date, end_date, events } = req.body;
 
-        if (!req.user || !req.user.user_id) {
+    try {
+        const { destination, start_date, end_date, events, user_id } = req.body;
+
+        if (!user_id) {
             return res.status(400).json({ error: 'User ID is missing' });
         }
 
@@ -17,7 +18,7 @@ router.post('/', async (req, res) => {
 
         const newTrip = {
             trip_id: uuid(),
-            user_id: req.user ? req.user.user_id : req.body.user_id,
+            user_id: user_id,
             destination,
             start_date,
             end_date,
