@@ -3,18 +3,14 @@ const express = require('express')
 const router = express.Router();
 const { v4: uuid } = require('uuid');
 
-
-
-const isAuthenticated = (req, res, next) => {
-    if (req.isAuthenticated()) {
-        return next();
-    }
-    res.status(401).send('Unauthorized');
-};
-
-router.post('/', isAuthenticated, async (req, res) => {
+router.post('/', async (req, res) => {
+    console.log(req.body);
     try {
-        const { destination, start_date, end_date, events } = req.body;
+        const { destination, start_date, end_date, events, user_id } = req.body;
+
+        if (!user_id) {
+            return res.status(400).json({ error: 'User ID is missing' });
+        }
 
         if (!destination || !start_date || !end_date) {
             return res.status(400).send('Bad Request: Missing required fields.');
@@ -22,7 +18,7 @@ router.post('/', isAuthenticated, async (req, res) => {
 
         const newTrip = {
             trip_id: uuid(),
-            user_id: req.user.user_id,
+            user_id: user_id,
             destination,
             start_date,
             end_date,
@@ -52,7 +48,7 @@ router.post('/', isAuthenticated, async (req, res) => {
     }
 });
 
-router.put('/:trip_id', isAuthenticated, async (req, res) => {
+router.put('/:trip_id', async (req, res) => {
     try {
         const { destination, start_date, end_date, events } = req.body;
         const tripId = req.params.trip_id;
@@ -90,7 +86,7 @@ router.put('/:trip_id', isAuthenticated, async (req, res) => {
     }
 });
 
-router.get('/', isAuthenticated, async (req, res) => {
+router.get('/', async (req, res) => {
     try {
         const plans = await knex('trips').where({ user_id: req.user.user_id });
         res.status(200).json(plans);
@@ -101,7 +97,7 @@ router.get('/', isAuthenticated, async (req, res) => {
 });
 
 
-router.get('/:trip_id', isAuthenticated, async (req, res) => {
+router.get('/:trip_id', async (req, res) => {
     try {
         const { trip_id } = req.params
         const tripDetailsDB = await knex('trip_details')
@@ -152,7 +148,7 @@ router.get('/:trip_id', isAuthenticated, async (req, res) => {
 });
 
 
-router.delete('/:trip_id/event/:event_id', isAuthenticated, async (req, res) => {
+router.delete('/:trip_id/event/:event_id', async (req, res) => {
     try {
         const { trip_id, event_id } = req.params;
         await knex('trip_details')
@@ -165,7 +161,7 @@ router.delete('/:trip_id/event/:event_id', isAuthenticated, async (req, res) => 
     }
 });
 
-router.delete('/:trip_id', isAuthenticated, async (req, res) => {
+router.delete('/:trip_id', async (req, res) => {
     try {
         const { trip_id } = req.params;
         await knex('trip_details').where({ trip_id }).del();
