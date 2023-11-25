@@ -4,7 +4,7 @@ const router = express.Router();
 const { v4: uuid } = require('uuid');
 
 router.post('/', async (req, res) => {
-
+    console.log(req.body);
     try {
         const { destination, start_date, end_date, events, user_id } = req.body;
 
