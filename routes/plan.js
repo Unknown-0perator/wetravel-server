@@ -2,9 +2,9 @@ const knex = require('knex')(require('../knexfile'));
 const express = require('express')
 const router = express.Router();
 const { v4: uuid } = require('uuid');
+const { setYear, parseISO, format } = require('date-fns');
 
 router.post('/', async (req, res) => {
-    console.log(req.body);
     try {
         const { destination, start_date, end_date, events, user_id } = req.body;
 
@@ -26,15 +26,22 @@ router.post('/', async (req, res) => {
 
         await knex('trips').insert(newTrip);
 
+        const currentYear = new Date().getFullYear();
+
         if (events && events.length !== 0) {
-            const eventInserts = events.map(event => ({
-                trip_id: newTrip.trip_id,
-                event_id: uuid(),
-                date: event.date,
-                event_time: event.event_time,
-                event_type: event.event_type,
-                event_description: event.event_description,
-            }));
+            const eventInserts = events.map(event => {
+                const dateWithCurrentYear = setYear(parseISO(event.date), currentYear);
+                const formattedDate = format(dateWithCurrentYear, 'yyyy-MM-dd');
+
+                return {
+                    trip_id: newTrip.trip_id,
+                    event_id: uuid(),
+                    date: formattedDate,  // use formattedDate here instead of event.date
+                    event_time: event.event_time,
+                    event_type: event.event_type,
+                    event_description: event.event_description,
+                };
+            });
 
             await knex('trip_details').insert(eventInserts);
         }
@@ -65,15 +72,22 @@ router.put('/:trip_id', async (req, res) => {
 
             await trx('trip_details').where({ trip_id: tripId }).del();
 
+            const currentYear = new Date().getFullYear();
+
             if (events && events.length !== 0) {
-                const eventInserts = events.map(event => ({
-                    trip_id: tripId,
-                    event_id: uuid(),
-                    date: event.date,
-                    event_time: event.event_time,
-                    event_type: event.event_type,
-                    event_description: event.event_description,
-                }));
+                const eventInserts = events.map(event => {
+                    const dateWithCurrentYear = setYear(parseISO(event.date), currentYear);
+                    const formattedDate = format(dateWithCurrentYear, 'yyyy-MM-dd');
+
+                    return {
+                        trip_id: tripId,
+                        event_id: uuid(),
+                        date: formattedDate,
+                        event_time: event.event_time,
+                        event_type: event.event_type,
+                        event_description: event.event_description,
+                    };
+                });
                 await trx('trip_details').insert(eventInserts);
             }
         });
@@ -87,15 +101,15 @@ router.put('/:trip_id', async (req, res) => {
 });
 
 router.get('/', async (req, res) => {
+    const userId = req.query.user_id;
     try {
-        const plans = await knex('trips').where({ user_id: req.user.user_id });
+        const plans = await knex('trips').where({ user_id: userId });
         res.status(200).json(plans);
     } catch (error) {
         console.error('Error retrieving trips:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
-
 
 router.get('/:trip_id', async (req, res) => {
     try {
@@ -108,70 +122,76 @@ router.get('/:trip_id', async (req, res) => {
 
         if (tripsDB.length === 0) {
             res.status(404).json({ error: `Plan with ID ${req.params.trip_id} doesn't exist` });
-        } else {
-            const tripDetails = {
-                trip_id: tripsDB[0].trip_id,
-                user_id: tripsDB[0].user_id,
-                destination: tripsDB[0].destination,
-                start_date: tripsDB[0].start_date,
-                end_date: tripsDB[0].end_date,
-                days: [],
-            };
-            if (tripDetailsDB.length !== 0) {
-
-
-                let currentDay = null;
-
-                tripDetailsDB.forEach((detail) => {
-                    if (currentDay !== detail.date) {
-                        currentDay = detail.date;
-                        tripDetails.days.push({
-                            date: detail.date,
-                            events: [],
-                        });
-                    }
-
-                    tripDetails.days[tripDetails.days.length - 1].events.push({
-                        event_id: detail.event_id,
-                        event_type: detail.event_type,
-                        event_description: detail.event_description,
-                        event_time: detail.event_time,
-                    });
-                });
-            }
-            res.status(200).json(tripDetails);
+            return;
         }
+        const trip = {
+            trip_id: tripsDB[0].trip_id,
+            user_id: tripsDB[0].user_id,
+            destination: tripsDB[0].destination,
+            start_date: tripsDB[0].start_date,
+            end_date: tripsDB[0].end_date,
+            events: tripDetailsDB.map(detail => ({
+                event_id: detail.event_id,
+                date: detail.date,
+                event_time: detail.event_time,
+                event_type: detail.event_type,
+                event_description: detail.event_description
+            }))
+        };
+        res.status(200).json(trip);
     } catch (error) {
-        console.error('Error retrieving plan details:', error);
+        console.error('Error retrieving trip:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
-
 
 router.delete('/:trip_id/event/:event_id', async (req, res) => {
     try {
         const { trip_id, event_id } = req.params;
+
+        // Check if the event exists
+        const event = await knex('trip_details')
+            .where({ trip_id, event_id })
+            .first();
+
+        if (!event) {
+            return res.status(404).json({ error: `Event with ID ${event_id} for trip ID ${trip_id} not found.` });
+        }
+
+        // Delete the event
         await knex('trip_details')
             .where({ trip_id, event_id })
             .del();
-        res.status(204).json({});
+
+        res.status(200).json({ message: `Event with ID ${event_id} for trip ID ${trip_id} successfully deleted.` });
     } catch (error) {
         console.error('Error deleting event:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        res.status(500).json({ error: `Internal Server Error: Unable to delete event with ID ${event_id} for trip ID ${trip_id}.` });
     }
 });
+
 
 router.delete('/:trip_id', async (req, res) => {
     try {
         const { trip_id } = req.params;
+
+        const tripExists = await knex('trips').where({ trip_id }).first();
+        if (!tripExists) {
+            return res.status(404).json({ message: 'Trip not found' });
+        }
+
+        // Delete trip details first and then the trip
         await knex('trip_details').where({ trip_id }).del();
-        await knex('trips').where({ trip_id }).del();
-        res.status(204).json({});
+        const deletedRows = await knex('trips').where({ trip_id }).del();
+        
+        if (deletedRows === 0) {
+            return res.status(404).json({ message: 'Trip not found' });
+        } else {
+            res.status(200).json({ message: `Trip with ID ${trip_id} deleted successfully` });
+        }
     } catch (error) {
-        console.error('Error Deleting Trip:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
-
 
 module.exports = router;
