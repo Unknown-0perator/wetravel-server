@@ -72,15 +72,22 @@ router.put('/:trip_id', async (req, res) => {
 
             await trx('trip_details').where({ trip_id: tripId }).del();
 
+            const currentYear = new Date().getFullYear();
+
             if (events && events.length !== 0) {
-                const eventInserts = events.map(event => ({
-                    trip_id: tripId,
-                    event_id: uuid(),
-                    date: event.date,
-                    event_time: event.event_time,
-                    event_type: event.event_type,
-                    event_description: event.event_description,
-                }));
+                const eventInserts = events.map(event => {
+                    const dateWithCurrentYear = setYear(parseISO(event.date), currentYear);
+                    const formattedDate = format(dateWithCurrentYear, 'yyyy-MM-dd');
+
+                    return {
+                        trip_id: tripId,
+                        event_id: uuid(),
+                        date: formattedDate,
+                        event_time: event.event_time,
+                        event_type: event.event_type,
+                        event_description: event.event_description,
+                    };
+                });
                 await trx('trip_details').insert(eventInserts);
             }
         });
@@ -104,7 +111,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-
 router.get('/:trip_id', async (req, res) => {
     try {
         const { trip_id } = req.params
@@ -125,6 +131,7 @@ router.get('/:trip_id', async (req, res) => {
             start_date: tripsDB[0].start_date,
             end_date: tripsDB[0].end_date,
             events: tripDetailsDB.map(detail => ({
+                event_id: detail.event_id,
                 date: detail.date,
                 event_time: detail.event_time,
                 event_type: detail.event_type,
@@ -138,19 +145,31 @@ router.get('/:trip_id', async (req, res) => {
     }
 });
 
-
 router.delete('/:trip_id/event/:event_id', async (req, res) => {
     try {
         const { trip_id, event_id } = req.params;
+
+        // Check if the event exists
+        const event = await knex('trip_details')
+            .where({ trip_id, event_id })
+            .first();
+
+        if (!event) {
+            return res.status(404).json({ error: `Event with ID ${event_id} for trip ID ${trip_id} not found.` });
+        }
+
+        // Delete the event
         await knex('trip_details')
             .where({ trip_id, event_id })
             .del();
-        res.status(204).json({});
+
+        res.status(200).json({ message: `Event with ID ${event_id} for trip ID ${trip_id} successfully deleted.` });
     } catch (error) {
         console.error('Error deleting event:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        res.status(500).json({ error: `Internal Server Error: Unable to delete event with ID ${event_id} for trip ID ${trip_id}.` });
     }
 });
+
 
 router.delete('/:trip_id', async (req, res) => {
     try {
