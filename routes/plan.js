@@ -26,17 +26,13 @@ router.post('/', async (req, res) => {
 
         await knex('trips').insert(newTrip);
 
-        const currentYear = new Date().getFullYear();
-
         if (events && events.length !== 0) {
             const eventInserts = events.map(event => {
-                const dateWithCurrentYear = setYear(parseISO(event.date), currentYear);
-                const formattedDate = format(dateWithCurrentYear, 'yyyy-MM-dd');
 
                 return {
                     trip_id: newTrip.trip_id,
                     event_id: uuid(),
-                    date: formattedDate,  // use formattedDate here instead of event.date
+                    date: event.date,
                     event_time: event.event_time,
                     event_type: event.event_type,
                     event_description: event.event_description,
