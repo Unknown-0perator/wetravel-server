@@ -65,20 +65,15 @@ router.put('/:trip_id', async (req, res) => {
         await knex.transaction(async (trx) => {
 
             await trx('trips').where({ trip_id: tripId }).update(updatedTrip);
-
             await trx('trip_details').where({ trip_id: tripId }).del();
-
-            const currentYear = new Date().getFullYear();
 
             if (events && events.length !== 0) {
                 const eventInserts = events.map(event => {
-                    const dateWithCurrentYear = setYear(parseISO(event.date), currentYear);
-                    const formattedDate = format(dateWithCurrentYear, 'yyyy-MM-dd');
 
                     return {
                         trip_id: tripId,
                         event_id: uuid(),
-                        date: formattedDate,
+                        date: event.date,
                         event_time: event.event_time,
                         event_type: event.event_type,
                         event_description: event.event_description,
