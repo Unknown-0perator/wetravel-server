@@ -8,7 +8,7 @@ const { hashPassword } = require('../utils/encrypt_decrypt-password');
 router.post('/sign-up', (req, res) => {
     knex('users').where({ email: req.body.email }).then(async response => {
         if (response.length === 0) {
-            const hashedPassword = await hashPassword(req.body.password); // Assuming hashPassword is async
+            const hashedPassword = await hashPassword(req.body.password);
             const userId = uuid();
             const newUser = {
                 user_id: userId,
@@ -39,7 +39,7 @@ router.post('/sign-up', (req, res) => {
                     email: newUser.email,
                 };
 
-                res.status(201).json({ message: "User Created Successfully", userData: userData });
+                res.status(201).json({ message: "User Created Successfully", user: userData });
             } catch (err) {
                 console.error('Error signing up:', err);
                 res.status(500).json({ error: 'Failed to register user.' });
