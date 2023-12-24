@@ -3,6 +3,7 @@ exports.up = function (knex) {
         .createTable('questionnaire', (table) => {
             table.uuid('questionnaire_id').primary();
             table.uuid('user_id').references('users.user_id').onUpdate('CASCADE').onDelete('CASCADE').notNullable();
+            table.string('country')
             table.string('traveler_type');
             table.string('food_type');
             table.string('food_rate');

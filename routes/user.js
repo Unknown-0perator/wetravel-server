@@ -19,10 +19,10 @@ router.post('/sign-up', (req, res) => {
 
             try {
                 await knex('users').insert(newUser);
-                
                 const newQuestionnaire = {
                     questionnaire_id: uuid(),
                     user_id: userId,
+                    country: req.body.country,
                     traveler_type: req.body.traveler_type,
                     food_type: req.body.food_type,
                     food_rate: req.body.food_rate,
