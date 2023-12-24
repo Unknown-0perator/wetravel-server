@@ -16,7 +16,12 @@ router.post('/login', (req, res, next) => {
             if (err) {
                 return res.status(500).json({ message: "Error logging in" });
             }
-            return res.status(200).json({ message: "Logged in successfully" });
+            const userData = {
+                user_id: user.user_id,
+                user_name: user.user_name,
+                email: user.email
+            };
+            return res.status(200).json({ message: "Logged in successfully", user: userData });
         });
     })(req, res, next);
 });
