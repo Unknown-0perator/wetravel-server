@@ -41,14 +41,12 @@ router.post('/sign-up', (req, res) => {
 
                 res.status(201).json({ message: "User Created Successfully", user: userData });
             } catch (err) {
-                console.error('Error signing up:', err);
                 res.status(500).json({ error: 'Failed to register user.' });
             }
         } else {
             res.status(400).json({ message: "User Already Exists" });
         }
     }).catch((err) => {
-        console.error('Error:', err);
         res.status(500).json({ error: "Server Error" });
     });
 });
