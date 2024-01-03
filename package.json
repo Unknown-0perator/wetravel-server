@@ -32,8 +32,10 @@
     "jsonwebtoken": "^9.0.2",
     "knex": "^3.0.1",
     "mysql": "^2.18.1",
+    "openai": "^4.24.1",
     "passport": "^0.6.0",
     "passport-local": "^1.0.0",
+    "unsplash-js": "^7.0.19",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

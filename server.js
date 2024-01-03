@@ -10,10 +10,11 @@ const { PORT, CORS_ORIGIN } = process.env;
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const planRoutes = require('./routes/plan');
+const recommendRoutes = require('./routes/recommend');
 
 app.use(cors({
     origin: CORS_ORIGIN,
-    credentials: true 
+    credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -31,7 +32,8 @@ app.get('/', (req, res) => {
 });
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
-app.use('/plan', planRoutes)
+app.use('/plan', planRoutes);
+app.use('/recommend', recommendRoutes);
 
 app.listen(PORT, () => {
     console.log(`Listening on port ${PORT}`);
