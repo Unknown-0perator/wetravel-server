@@ -4,12 +4,20 @@ const router = express.Router();
 const { createApi } = require('unsplash-js');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
+const OpenAI = require('openai')
+
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+
+
+const openai = new OpenAI({ api_key: process.env.OPENAI_API_KEY })
 
 const unsplash = createApi({
     accessKey: process.env.UNSPLASH_API_KEY
 });
+
+
 
 router.post('/', async (req, res) => {
     try {
@@ -28,15 +36,26 @@ router.post('/', async (req, res) => {
            for me. I enjoy ${questionnaireData[0].activity_type} activities. I prefer 
            ${questionnaireData[0].climate_type} weather. My specific travel interests are 
            ${questionnaireData[0].hobby_type}. It is ${questionnaireData[0].culture_rate} for me to 
-           immerse in the local culture while traveling. in the json format with the following structure 
-           [ {city: first_destination_name, country: first_destination_country_name }]
-        `;
-        const result = await model.generateContent(prompt);
-        const response = result.response;
-        const text = response.text();
-        const resultText = JSON.parse(text.replace(/^```json\n|```$/g, ''));
+           immerse in the local culture while traveling. Return response in the in the following parsable JSON format:
 
-        await Promise.all(resultText.map(async city => {
+           [ {"city": "first_destination_name", "country": "first_destination_country_name" }, ...]
+        `;
+        // const result = await model.generateContent(prompt);
+        // const response = result.response;
+        // const text = response.text();
+        // const resultText = JSON.parse(text.replace(/^```json\n|```$/g, ''));
+
+        const result = await openai.completions.create({
+            model: 'text-davinci-003',
+            prompt: prompt,
+            max_tokens: 2048,
+            temperature: 1
+        })
+
+        const parsableJSONresponse = result.choices[0].text
+        const parsedResponse = JSON.parse(parsableJSONresponse)
+
+        await Promise.all(parsedResponse.map(async city => {
             const unsplashResult = await unsplash.search.getPhotos({ query: city.city, page: 1, perPage: 1 });
             if (unsplashResult.type === 'success') {
                 const firstPhoto = unsplashResult.response.results[0];
@@ -45,7 +64,7 @@ router.post('/', async (req, res) => {
             }
         }));
 
-        res.status(200).json(resultText);
+        res.status(200).json(parsedResponse);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
