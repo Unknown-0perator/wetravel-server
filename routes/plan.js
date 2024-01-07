@@ -2,11 +2,10 @@ const knex = require('knex')(require('../knexfile'));
 const express = require('express')
 const router = express.Router();
 const { v4: uuid } = require('uuid');
-const { setYear, parseISO, format } = require('date-fns');
 
 router.post('/', async (req, res) => {
     try {
-        const { destination, start_date, end_date, events, user_id } = req.body;
+        const { destination, start_date, end_date, events, user_id, notes } = req.body;
 
         if (!user_id) {
             return res.status(400).json({ error: 'User ID is missing' });
@@ -22,6 +21,7 @@ router.post('/', async (req, res) => {
             destination,
             start_date,
             end_date,
+            notes,
         };
 
         await knex('trips').insert(newTrip);
@@ -53,13 +53,14 @@ router.post('/', async (req, res) => {
 
 router.put('/:trip_id', async (req, res) => {
     try {
-        const { destination, start_date, end_date, events } = req.body;
+        const { destination, start_date, end_date, events, notes } = req.body;
         const tripId = req.params.trip_id;
 
         const updatedTrip = {
             destination,
             start_date,
             end_date,
+            notes,
         };
 
         await knex.transaction(async (trx) => {
@@ -121,6 +122,7 @@ router.get('/:trip_id', async (req, res) => {
             destination: tripsDB[0].destination,
             start_date: tripsDB[0].start_date,
             end_date: tripsDB[0].end_date,
+            notes: tripsDB[0].notes,
             events: tripDetailsDB.map(detail => ({
                 event_id: detail.event_id,
                 date: detail.date,
