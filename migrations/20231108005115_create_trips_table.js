@@ -6,6 +6,7 @@ exports.up = function (knex) {
             table.string('destination').notNullable();
             table.string('start_date').notNullable();
             table.string('end_date').notNullable();
+            table.text('notes');
             table.timestamp('created_at').defaultTo(knex.fn.now());
         })
 }
