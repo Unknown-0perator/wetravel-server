@@ -2,14 +2,7 @@ const knex = require('knex')(require('../knexfile'));
 const express = require('express');
 const router = express.Router();
 const { createApi } = require('unsplash-js');
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-
 const OpenAI = require('openai')
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-
-
 
 const openai = new OpenAI({ api_key: process.env.OPENAI_API_KEY })
 
@@ -40,13 +33,10 @@ router.post('/', async (req, res) => {
 
            [ {"city": "first_destination_name", "country": "first_destination_country_name" }, ...]
         `;
-        // const result = await model.generateContent(prompt);
-        // const response = result.response;
-        // const text = response.text();
-        // const resultText = JSON.parse(text.replace(/^```json\n|```$/g, ''));
+
 
         const result = await openai.completions.create({
-            model: 'text-davinci-003',
+            model: 'gpt-3.5-turbo-instruct',
             prompt: prompt,
             max_tokens: 2048,
             temperature: 1
@@ -54,7 +44,6 @@ router.post('/', async (req, res) => {
 
         const parsableJSONresponse = result.choices[0].text
         const parsedResponse = JSON.parse(parsableJSONresponse)
-
         await Promise.all(parsedResponse.map(async city => {
             const unsplashResult = await unsplash.search.getPhotos({ query: city.city, page: 1, perPage: 1 });
             if (unsplashResult.type === 'success') {
