@@ -8,7 +8,7 @@ const { hashPassword } = require('../utils/encrypt_decrypt-password');
 router.post('/sign-up', (req, res) => {
     knex('users').where({ email: req.body.email }).then(async response => {
         if (response.length === 0) {
-            const hashedPassword = await hashPassword(req.body.password); // Assuming hashPassword is async
+            const hashedPassword = await hashPassword(req.body.password);
             const userId = uuid();
             const newUser = {
                 user_id: userId,
@@ -19,10 +19,10 @@ router.post('/sign-up', (req, res) => {
 
             try {
                 await knex('users').insert(newUser);
-                
                 const newQuestionnaire = {
                     questionnaire_id: uuid(),
                     user_id: userId,
+                    country: req.body.country,
                     traveler_type: req.body.traveler_type,
                     food_type: req.body.food_type,
                     food_rate: req.body.food_rate,
@@ -39,16 +39,14 @@ router.post('/sign-up', (req, res) => {
                     email: newUser.email,
                 };
 
-                res.status(201).json({ message: "User Created Successfully", userData: userData });
+                res.status(201).json({ message: "User Created Successfully", user: userData });
             } catch (err) {
-                console.error('Error signing up:', err);
                 res.status(500).json({ error: 'Failed to register user.' });
             }
         } else {
             res.status(400).json({ message: "User Already Exists" });
         }
     }).catch((err) => {
-        console.error('Error:', err);
         res.status(500).json({ error: "Server Error" });
     });
 });
