@@ -31,7 +31,14 @@ router.post('/', async (req, res) => {
            ${questionnaireData[0].hobby_type}. It is ${questionnaireData[0].culture_rate} for me to 
            immerse in the local culture while traveling. Return response in the in the following parsable JSON format:
 
-           [ {"city": "first_destination_name", "country": "first_destination_country_name" }, ...]
+           [ 
+            {"city": "first_destination_name", "country": "first_destination_country_name" },
+            {"city": "second_destination_name", "country": "second_destination_country_name" },
+            {"city": "third_destination_name", "country": "third_destination_country_name" },
+            {"city": "fourth_destination_name", "country": "fourth_destination_country_name" },
+            {"city": "fifth_destination_name", "country": "fifth_destination_country_name" },
+        
+        ]
         `;
 
 
@@ -43,7 +50,19 @@ router.post('/', async (req, res) => {
         })
 
         const parsableJSONresponse = result.choices[0].text
-        const parsedResponse = JSON.parse(parsableJSONresponse)
+        let parsedResponse;
+        try {
+            parsedResponse = JSON.parse(result.choices[0].text);
+        } catch (parseError) {
+            console.error('Error parsing response:', parseError);
+            const retryResult = await openai.completions.create({
+                model: 'gpt-3.5-turbo-instruct',
+                prompt: prompt,
+                max_tokens: 2048,
+                temperature: 1
+            });
+            parsedResponse = JSON.parse(retryResult.choices[0].text);
+        }
         await Promise.all(parsedResponse.map(async city => {
             const unsplashResult = await unsplash.search.getPhotos({ query: city.city, page: 1, perPage: 1 });
             if (unsplashResult.type === 'success') {
